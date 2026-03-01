@@ -1,0 +1,667 @@
+<!doctype html>
+<html lang="id" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LSR – Jadwal Pelajaran</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    
+    .gradient-bg {
+      background: linear-gradient(135deg, #4765eb 0%, #7f61cc 100%);
+    }
+    
+    .glass-card {
+      background: rgba(255, 255, 255, 0.95);
+      backdrop-filter: blur(10px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    
+    .schedule-card {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    .schedule-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    }
+    
+    .day-active {
+      animation: pulse-glow 2s infinite;
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% {
+        box-shadow: 0 0 20px rgba(102, 126, 234, 0.4);
+      }
+      50% {
+        box-shadow: 0 0 30px rgba(102, 126, 234, 0.6);
+      }
+    }
+    
+    @keyframes fade-slide-in {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .animate-in {
+      animation: fade-slide-in 0.5s ease-out forwards;
+    }
+    
+    .week-badge {
+      transition: all 0.4s ease;
+    }
+    
+    .subject-item {
+      transition: all 0.2s ease;
+    }
+    
+    .subject-item:hover {
+      background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+      transform: translateX(4px);
+    }
+    
+    input[type="date"] {
+      cursor: pointer;
+    }
+    
+    input[type="date"]::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+      filter: invert(40%) sepia(80%) saturate(500%) hue-rotate(200deg);
+    }
+    
+    .today-indicator {
+      position: relative;
+    }
+    
+    .today-indicator::after {
+      content: 'HARI INI';
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, #f59e0b 0%, #cd3737 100%);
+      color: white;
+      font-size: 0.6rem;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      animation: bounce 1s infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-3px); }
+    }
+    
+    /* Edit button styles */
+    .edit-btn {
+      opacity: 0;
+      transition: opacity 0.2s ease;
+    }
+    
+    .schedule-card:hover .edit-btn {
+      opacity: 1;
+    }
+    
+    /* Modal styles */
+    .modal-overlay {
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(4px);
+    }
+    
+    /* Enhanced mobile responsiveness */
+    @media (max-width: 640px) {
+      .schedule-card {
+        margin-bottom: 0.5rem;
+      }
+      
+      .subject-item {
+        padding: 0.5rem;
+      }
+      
+      .edit-btn {
+        opacity: 1;
+      }
+    }
+  </style>
+ </head>
+ <body class="h-full gradient-bg overflow-auto">
+  <div class="min-h-full w-full p-3 md:p-6 lg:p-8">
+   <!-- Header -->
+   <header class="text-center mb-6 md:mb-8 animate-in">
+    <div class="inline-flex items-center gap-2 sm:gap-3 mb-2">
+     <div class="w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 rounded-xl bg-white shadow-lg flex items-center justify-center">
+      <span class="text-xl sm:text-2xl md:text-3xl">📚</span>
+     </div>
+     <h1 id="app-title" class="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-extrabold text-white drop-shadow-lg">LSR – Jadwal Pelajaran</h1>
+    </div>
+    <p class="text-white drop-shadow-lg text-base sm:text-lg md:text-xl font-semibold">X TKJ B</p>
+    <p class="text-white drop-shadow-lg text-base sm:text-lg md:text-xl font-semibold">SMK NEGERI 1 GOMBONG</p>
+   </header>
+
+   <!-- Control Panel -->
+   <div class="max-w-md mx-auto mb-6 md:mb-8 glass-card rounded-2xl p-4 sm:p-6 shadow-xl animate-in" style="animation-delay: 0.1s;">
+    <div class="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
+     <!-- Date Picker -->
+     <div class="flex-1 w-full">
+      <label class="block text-sm font-semibold text-gray-600 mb-2">📅 Pilih Tanggal</label>
+      <input type="date" id="datePicker" class="w-full px-3 sm:px-4 py-2 sm:py-3 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none transition-colors text-gray-700 font-medium text-sm sm:text-base">
+     </div>
+     <!-- Week Indicator -->
+     <div class="flex-shrink-0 flex flex-col items-center gap-2">
+      <div id="weekBadge" class="week-badge px-4 sm:px-6 py-2 sm:py-3 rounded-xl font-bold text-white text-center min-w-[100px] sm:min-w-[120px] shadow-lg">
+       <span id="weekNumber" class="text-xl sm:text-2xl block">1</span>
+       <span class="text-xs uppercase tracking-wider opacity-90">Pekan</span>
+      </div>
+      <!-- Manual Week Toggle Button -->
+      <button id="weekToggleBtn" onclick="toggleWeekMode()" class="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-600 text-xs font-semibold transition-all duration-200 border border-gray-300">
+       <span id="toggleIcon">🔄</span>
+       <span id="toggleText">Ganti Pekan</span>
+      </button>
+     </div>
+    </div>
+    <!-- Manual Mode Indicator -->
+    <div id="manualModeIndicator" class="mt-3 hidden text-center">
+     <span class="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-amber-100 text-amber-700 text-xs font-semibold">
+      <span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+      Mode Manual - Klik tombol untuk ganti pekan
+     </span>
+    </div>
+    <!-- Selected Date Display -->
+    <div class="mt-4 text-center">
+     <p class="text-gray-500 text-sm">Tanggal dipilih: <span id="selectedDateText" class="font-semibold text-purple-600"></span></p>
+     <p class="text-gray-400 text-xs mt-1"><span id="weekExplanation"></span></p>
+    </div>
+   </div>
+
+   <!-- Schedule Grid -->
+   <div id="scheduleContainer" class="max-w-6xl mx-auto grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3 sm:gap-4 md:gap-6 mb-6 md:mb-8">
+    <!-- Schedule cards will be generated here -->
+   </div>
+
+   <!-- Edit Schedule Panel -->
+   <div id="editPanel" class="max-w-md mx-auto mb-6 md:mb-8 glass-card rounded-2xl p-4 sm:p-6 shadow-xl animate-in" style="animation-delay: 0.2s;">
+    <div class="flex items-center justify-between mb-4">
+     <h3 class="text-lg font-bold text-gray-700">✏️ Edit Jadwal</h3>
+     <span class="text-xs text-gray-500">Klik tombol edit pada kartu jadwal</span>
+    </div>
+    <div class="bg-amber-50 border border-amber-200 rounded-lg p-3 text-sm text-amber-700">
+     <p><strong>Cara Menggunakan:</strong></p>
+     <ul class="list-disc list-inside mt-1 space-y-1">
+      <li>Arahkan kursor ke kartu jadwal</li>
+      <li>Klik tombol ✏️ yang muncul</li>
+      <li>Edit nama mata pelajaran</li>
+      <li>Klik Simpan untuk menyimpan</li>
+     </ul>
+    </div>
+   </div>
+
+   <!-- Footer -->
+   <footer class="text-center py-4 sm:py-6 animate-in" style="animation-delay: 0.3s;">
+    <div class="glass-card inline-block px-4 sm:px-6 py-2 sm:py-3 rounded-full">
+     <p id="footer-text" class="text-gray-600 text-sm font-medium">apk by abill(01), agha (18), sitri (29), via(34)</p>
+    </div>
+    <p class="text-white/60 text-xs sm:text-sm mt-2 sm:mt-3">© 2026 LSR SMK NEGERI 1 GOMBONG</p>
+   </footer>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="fixed inset-0 modal-overlay hidden items-center justify-center z-50 p-4">
+   <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[90vh] overflow-auto">
+    <div class="p-4 sm:p-6">
+     <div class="flex items-center justify-between mb-4">
+      <h3 class="text-lg font-bold text-gray-700">✏️ Edit Jadwal <span id="editDayLabel"></span></h3>
+      <button onclick="closeEditModal()" class="text-gray-400 hover:text-gray-600 text-2xl">&times;</button>
+     </div>
+     <div class="mb-4">
+      <label class="block text-sm font-semibold text-gray-600 mb-2">Pilih Pekan:</label>
+      <select id="editWeekSelect" onchange="loadDayForEdit()" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none">
+       <option value="pekan1">Pekan 1</option>
+       <option value="pekan2">Pekan 2</option>
+      </select>
+     </div>
+     <div class="mb-4">
+      <label class="block text-sm font-semibold text-gray-600 mb-2">Pilih Hari:</label>
+      <select id="editDaySelect" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none">
+       <option value="senin">Senin</option>
+       <option value="selasa">Selasa</option>
+       <option value="rabu">Rabu</option>
+       <option value="kamis">Kamis</option>
+       <option value="jumat">Jumat</option>
+       <option value="sabtu">Sabtu</option>
+       <option value="minggu">Minggu</option>
+      </select>
+     </div>
+     <div class="mb-4">
+      <label class="block text-sm font-semibold text-gray-600 mb-2">Mata Pelajaran (satu per baris):</label>
+      <textarea id="editSubjects" rows="8" class="w-full px-3 py-2 rounded-xl border-2 border-gray-200 focus:border-purple-500 focus:outline-none text-sm" placeholder="Masukkan mata pelajaran, satu per baris..."></textarea>
+     </div>
+     <div class="flex gap-3">
+      <button onclick="saveEditedSchedule()" class="flex-1 bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-4 rounded-xl transition-colors">
+       💾 Simpan
+      </button>
+      <button onclick="closeEditModal()" class="flex-1 bg-gray-200 hover:bg-gray-300 text-gray-700 font-semibold py-2 px-4 rounded-xl transition-colors">
+       Batal
+      </button>
+     </div>
+    </div>
+   </div>
+  </div>
+
+  <script>
+    // ==================== DATA JADWAL ====================
+    const defaultScheduleData = {
+      pekan1: {
+        senin: ['Olahraga (3 Jam Pelajaran)', 'Pancasila (2 Jam Pelajaran)', 'Bahasa Jawa (2 Jam Pelajaran)', 'Pendidikan Agama Islam (3 Jam Pelajaran)'],
+        selasa: ['Matematika (4 Jam Pelajaran)', 'Bahasa Inggris (4 Jam Pelajaran)', 'BP/BK (2 Jam Pelajaran)', 'Bahasa Jawa (2 Jam Pelajaran)'],
+        rabu: ['TJKT (12 Jam Pelajaran, Lab TKJ 5)'],
+        kamis: ['Sejarah (2 Jam Pelajaran, R.18)', 'Seni (2 Jam Pelajaran, R.18)', 'Bahasa Inggris (4 Jam Pelajaran, R.18)', 'Bahasa Indonesia (4 Jam Pelajaran, R.18)'],
+        jumat: ['Bahasa Indonesia (4 Jam Pelajaran, R.26)', 'Seni (2 Jam Pelajaran, R.18)'],
+        sabtu: ['Istirahat, tidak masuk sekolah'],
+        minggu: ['Istirahat, tidak masuk sekolah']
+      },
+      pekan2: {
+        senin: ['Sejarah (2 Jam Pelajaran, R.21)', 'KKA (4 Jam Pelajaran, R.23)', 'Informatika (4 Jam Pelajaran, Lab TKJ 2)'],
+        selasa: ['IPAS (6 Jam Pelajaran, R.9)', 'Pancasila (2 Jam Pelajaran, R.9)', 'Informatika (4 Jam Pelajaran, Lab TKJ 2)'],
+        rabu: ['Pendidikan Agama Islam (3 Jam pelajaran, R.14)', 'BP/BK (2 Jam pelajaran, R.14)', 'Olahraga (3 Jam Pelajaran, Lapangan)', 'Matematika (4 Jam Pelajaran, R.28)'],
+        kamis: ['TJKT (12 Jam Pelajaran, Lab TKJ 5)'],
+        jumat: ['IPAS (6 Jam Pelajaran, R.9)'],
+        sabtu: ['Istirahat, tidak masuk sekolah'],
+        minggu: ['Istirahat, tidak masuk sekolah']
+      }
+    };
+
+    // Load from localStorage or use default
+    let scheduleData = loadFromLocalStorage() || defaultScheduleData;
+
+    // ==================== LOCALSTORAGE FUNCTIONS ====================
+    function saveToLocalStorage() {
+      try {
+        localStorage.setItem('lsr_scheduleData', JSON.stringify(scheduleData));
+        console.log('Schedule saved to localStorage');
+      } catch (e) {
+        console.error('Error saving to localStorage:', e);
+      }
+    }
+
+    function loadFromLocalStorage() {
+      try {
+        const saved = localStorage.getItem('lsr_scheduleData');
+        if (saved) {
+          console.log('Schedule loaded from localStorage');
+          return JSON.parse(saved);
+        }
+      } catch (e) {
+        console.error('Error loading from localStorage:', e);
+      }
+      return null;
+    }
+
+    function resetToDefault() {
+      scheduleData = JSON.parse(JSON.stringify(defaultScheduleData));
+      saveToLocalStorage();
+      const datePicker = document.getElementById('datePicker');
+      if (datePicker && datePicker.value) {
+        updateDisplay(new Date(datePicker.value));
+      }
+    }
+
+    const dayNames = ['senin', 'selasa', 'rabu', 'kamis', 'jumat', 'sabtu', 'minggu'];
+    const dayLabels = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+    const dayEmojis = ['🫡', '✏️', '📖', '📊', '🕌', '😴', '🛋️'];
+
+    // ==================== DEFAULT CONFIG ====================
+    const defaultConfig = {
+      app_title: 'LSR – Jadwal Pelajaran SMK',
+      footer_text: 'apk by abill(01), agha (18), sitri (29), via(34)',
+      primary_color: '#667eea',
+      secondary_color: '#764ba2',
+      text_color: '#374151',
+      card_color: '#ffffff',
+      accent_color: '#f59e0b'
+    };
+
+    let config = { ...defaultConfig };
+
+    // ==================== WEEK MODE STATE ====================
+    let isManualMode = false;
+    let manualWeekOverride = null; // 1 or 2, null when auto mode
+
+    // ==================== WEEK TOGGLE FUNCTIONS ====================
+    function toggleWeekMode() {
+      const datePicker = document.getElementById('datePicker');
+      const selectedDate = new Date(datePicker.value);
+      
+      if (!isManualMode) {
+        isManualMode = true;
+        manualWeekOverride = determineWeek(selectedDate);
+        updateManualModeUI(true, manualWeekOverride);
+      } else {
+        manualWeekOverride = manualWeekOverride === 1 ? 2 : 1;
+        updateManualModeUI(true, manualWeekOverride);
+      }
+      
+      updateDisplay(selectedDate);
+    }
+
+    function updateManualModeUI(isManual, weekNum) {
+      const indicator = document.getElementById('manualModeIndicator');
+      const toggleBtn = document.getElementById('weekToggleBtn');
+      const toggleIcon = document.getElementById('toggleIcon');
+      const toggleText = document.getElementById('toggleText');
+      
+      if (isManual) {
+        indicator.classList.remove('hidden');
+        toggleBtn.classList.remove('bg-gray-100', 'hover:bg-gray-200', 'text-gray-600');
+        toggleBtn.classList.add('bg-amber-100', 'hover:bg-amber-200', 'text-amber-700');
+        toggleText.textContent = 'Week ' + weekNum;
+        toggleIcon.textContent = '✓';
+      } else {
+        indicator.classList.add('hidden');
+        toggleBtn.classList.add('bg-gray-100', 'hover:bg-gray-200', 'text-gray-600');
+        toggleBtn.classList.remove('bg-amber-100', 'hover:bg-amber-200', 'text-amber-700');
+        toggleText.textContent = 'Ganti Pekan';
+        toggleIcon.textContent = '🔄';
+      }
+    }
+
+    // ==================== FUNGSI PENENTUAN PEKAN ====================
+    function getWeekOfMonth(date) {
+      const firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+      const dayOfMonth = date.getDate();
+      const firstDayOfWeek = firstDay.getDay();
+      const weekNumber = Math.ceil((dayOfMonth + firstDayOfWeek) / 7);
+      return weekNumber;
+    }
+
+    function determineWeek(date) {
+      const weekOfMonth = getWeekOfMonth(date);
+      return weekOfMonth % 2 === 1 ? 1 : 2;
+    }
+
+    function getDayOfWeek(date) {
+      const day = date.getDay();
+      return (day + 6) % 7;
+    }
+
+    // ==================== FUNGSI RENDER ====================
+    function formatDate(date) {
+      const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+      return date.toLocaleDateString('id-ID', options);
+    }
+
+    function updateWeekBadge(weekNum) {
+      const badge = document.getElementById('weekBadge');
+      const weekNumberEl = document.getElementById('weekNumber');
+      
+      weekNumberEl.textContent = weekNum;
+      
+      if (weekNum === 1) {
+        badge.style.background = `linear-gradient(135deg, ${config.primary_color} 0%, ${config.secondary_color} 100%)`;
+      } else {
+        badge.style.background = `linear-gradient(135deg, #10b981 0%, #059669 100%)`;
+      }
+      
+      badge.style.transform = 'scale(1.1)';
+      setTimeout(() => {
+        badge.style.transform = 'scale(1)';
+      }, 200);
+    }
+
+    function renderSchedule(weekNum, todayIndex) {
+      const container = document.getElementById('scheduleContainer');
+      const schedule = weekNum === 1 ? scheduleData.pekan1 : scheduleData.pekan2;
+      
+      container.innerHTML = '';
+      
+      dayNames.forEach((day, index) => {
+        const subjects = schedule[day];
+        const isToday = index === todayIndex;
+        
+        const card = document.createElement('div');
+        card.className = `schedule-card glass-card rounded-2xl overflow-hidden animate-in relative ${isToday ? 'today-indicator day-active' : ''}`;
+        card.style.animationDelay = `${index * 0.1}s`;
+        
+        const headerBg = isToday 
+          ? `linear-gradient(135deg, ${config.accent_color} 0%, #80DEEA 100%)`
+          : weekNum === 1 
+            ? `linear-gradient(135deg, ${config.primary_color} 0%, ${config.secondary_color} 100%)`
+            : 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+        
+        card.innerHTML = `
+          <div class="p-3 sm:p-4 text-white relative" style="background: ${headerBg};">
+            <button onclick="openEditModal('${day}', ${weekNum})" class="edit-btn absolute top-2 right-2 bg-white/20 hover:bg-white/40 text-white rounded-lg p-1.5 text-xs">
+              ✏️
+            </button>
+            <div class="flex items-center gap-2">
+              <span class="text-xl sm:text-2xl">${dayEmojis[index]}</span>
+              <div>
+                <h3 class="font-bold text-base sm:text-lg">${dayLabels[index]}</h3>
+                <p class="text-xs opacity-80">${subjects.length} mata pelajaran</p>
+              </div>
+            </div>
+          </div>
+          <div class="p-3 sm:p-4">
+            <ul class="space-y-1 sm:space-y-2">
+              ${subjects.map((subject, i) => `
+                <li class="subject-item flex items-center gap-2 sm:gap-3 p-1.5 sm:p-2 rounded-lg">
+                  <span class="w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center text-xs font-bold text-purple-600 flex-shrink-0">${i + 1}</span>
+                  <span class="text-gray-700 font-medium text-xs sm:text-sm leading-tight">${subject}</span>
+                </li>
+              `).join('')}
+            </ul>
+          </div>
+        `;
+        
+        container.appendChild(card);
+      });
+    }
+
+    function updateDisplay(selectedDate) {
+      let weekNum;
+      if (isManualMode && manualWeekOverride !== null) {
+        weekNum = manualWeekOverride;
+      } else {
+        weekNum = determineWeek(selectedDate);
+      }
+      
+      const weekOfMonth = getWeekOfMonth(selectedDate);
+      
+      document.getElementById('selectedDateText').textContent = formatDate(selectedDate);
+      
+      if (isManualMode) {
+        document.getElementById('weekExplanation').textContent = 
+          `Mode Manual - Pekan ${weekNum} (dipilih manuel)`;
+      } else {
+        document.getElementById('weekExplanation').textContent = 
+          `Minggu ke-${weekOfMonth} dalam bulan (${weekOfMonth % 2 === 1 ? 'ganjil' : 'genap'}) = Pekan ${weekNum}`;
+      }
+      
+      updateWeekBadge(weekNum);
+      
+      const today = new Date();
+      const isSelectedDateToday = 
+        selectedDate.getDate() === today.getDate() &&
+        selectedDate.getMonth() === today.getMonth() &&
+        selectedDate.getFullYear() === today.getFullYear();
+      
+      const todayIndex = isSelectedDateToday ? getDayOfWeek(today) : -1;
+      
+      renderSchedule(weekNum, todayIndex);
+    }
+
+    // ==================== EDIT MODAL FUNCTIONS ====================
+    function openEditModal(day, week) {
+      const modal = document.getElementById('editModal');
+      const weekSelect = document.getElementById('editWeekSelect');
+      const daySelect = document.getElementById('editDaySelect');
+      const subjectsTextarea = document.getElementById('editSubjects');
+      const dayLabel = document.getElementById('editDayLabel');
+      
+      // Set current values
+      weekSelect.value = week === 1 ? 'pekan1' : 'pekan2';
+      daySelect.value = day;
+      dayLabel.textContent = '- ' + dayLabels[dayNames.indexOf(day)];
+      
+      // Load subjects for selected day and week
+      const weekKey = weekSelect.value;
+      const dayKey = daySelect.value;
+      subjectsTextarea.value = scheduleData[weekKey][dayKey].join('\n');
+      
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+    }
+
+    function loadDayForEdit() {
+      const weekSelect = document.getElementById('editWeekSelect');
+      const daySelect = document.getElementById('editDaySelect');
+      const subjectsTextarea = document.getElementById('editSubjects');
+      const dayLabel = document.getElementById('editDayLabel');
+      
+      const weekKey = weekSelect.value;
+      const dayKey = daySelect.value;
+      
+      dayLabel.textContent = '- ' + dayLabels[dayNames.indexOf(dayKey)];
+      subjectsTextarea.value = scheduleData[weekKey][dayKey].join('\n');
+    }
+
+    function saveEditedSchedule() {
+      const weekSelect = document.getElementById('editWeekSelect');
+      const daySelect = document.getElementById('editDaySelect');
+      const subjectsTextarea = document.getElementById('editSubjects');
+      
+      const weekKey = weekSelect.value;
+      const dayKey = daySelect.value;
+      
+      // Parse subjects - split by newlines and filter empty lines
+      const newSubjects = subjectsTextarea.value
+        .split('\n')
+        .map(s => s.trim())
+        .filter(s => s.length > 0);
+      
+      // Update the schedule data
+      scheduleData[weekKey][dayKey] = newSubjects;
+      
+      // Save to localStorage
+      saveToLocalStorage();
+      
+      // Re-render the display
+      const datePicker = document.getElementById('datePicker');
+      const selectedDate = new Date(datePicker.value);
+      updateDisplay(selectedDate);
+      
+      // Close modal
+      closeEditModal();
+    }
+
+    function closeEditModal() {
+      const modal = document.getElementById('editModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // ==================== EVENT HANDLERS ====================
+    function initApp() {
+      const datePicker = document.getElementById('datePicker');
+      const today = new Date();
+      
+      const todayStr = today.toISOString().split('T')[0];
+      datePicker.value = todayStr;
+      
+      updateDisplay(today);
+      
+      datePicker.addEventListener('change', (e) => {
+        const selectedDate = new Date(e.target.value);
+        updateDisplay(selectedDate);
+      });
+    }
+
+    // ==================== ELEMENT SDK ====================
+    async function onConfigChange(newConfig) {
+      config = { ...defaultConfig, ...newConfig };
+      
+      const titleEl = document.getElementById('app-title');
+      if (titleEl) {
+        titleEl.textContent = config.app_title || defaultConfig.app_title;
+      }
+      
+      const footerEl = document.getElementById('footer-text');
+      if (footerEl) {
+        footerEl.textContent = config.footer_text || defaultConfig.footer_text;
+      }
+      
+      const datePicker = document.getElementById('datePicker');
+      if (datePicker && datePicker.value) {
+        updateDisplay(new Date(datePicker.value));
+      }
+    }
+
+    if (window.elementSdk) {
+      window.elementSdk.init({
+        defaultConfig,
+        onConfigChange,
+        mapToCapabilities: (cfg) => ({
+          recolorables: [
+            {
+              get: () => cfg.primary_color || defaultConfig.primary_color,
+              set: (value) => {
+                cfg.primary_color = value;
+                window.elementSdk.setConfig({ primary_color: value });
+              }
+            },
+            {
+              get: () => cfg.secondary_color || defaultConfig.secondary_color,
+              set: (value) => {
+                cfg.secondary_color = value;
+                window.elementSdk.setConfig({ secondary_color: value });
+              }
+            },
+            {
+              get: () => cfg.text_color || defaultConfig.text_color,
+              set: (value) => {
+                cfg.text_color = value;
+                window.elementSdk.setConfig({ text_color: value });
+              }
+            },
+            {
+              get: () => cfg.card_color || defaultConfig.card_color,
+              set: (value) => {
+                cfg.card_color = value;
+                window.elementSdk.setConfig({ card_color: value });
+              }
+            },
+            {
+              get: () => cfg.accent_color || defaultConfig.accent_color,
+              set: (value) => {
+                cfg.accent_color = value;
+                window.elementSdk.setConfig({ accent_color: value });
+              }
+            }
+          ],
+          borderables: [],
+          fontEditable: undefined,
+          fontSizeable: undefined
+        }),
+        mapToEditPanelValues: (cfg) => new Map([
+          ['app_title', cfg.app_title || defaultConfig.app_title],
+          ['footer_text', cfg.footer_text || defaultConfig.footer_text]
+        ])
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', initApp);
+  </script>
+ </body>
+</html>
